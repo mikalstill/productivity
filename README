@@ -1,0 +1,40 @@
+Creating todoist todos from tripit trips
+========================================
+
+The basic idea here is that for upcoming work trips, the set of things I need
+to do to prepare is fairly predictable, and those things could be todo items
+in the todo manager system I use (called todoist).
+
+Unfortunately, there are a few warts. The tripit API is a dumpster fire of
+abandonware, and doesn't work with python3. I looked at porting it, but when
+I got to the point of needing to debug authentication headers I realized I
+didn't care that much.
+
+Of course, the todoist API requires python3 because of its new fangled SSL
+certificates.
+
+The solution I came up with was to split the script into two parts -- a scraper
+which takes tripit API calls and makes a little cache on disk of upcoming
+trips, and a script which uses that cache to write todos to todoist. The
+scripts use different versions of python.
+
+Let's get the scraper running first.
+
+Create a ~/.tripit json file, which should look like this:
+
+
+
+
+
+This script uses trip information from tripit to build todo items in todoist.
+The wart here of course is that the tripit API library is terrible, and I had
+to forward port it to python3 to get it to work.
+
+To install, do something like:
+
+# cd todoist-python
+# pip3 install -e .
+
+I haven't figured out how to get python3 venvs working on Ubuntu 14.04,
+apparently Canonical shipped a broken implementation.
+
