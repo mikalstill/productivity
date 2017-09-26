@@ -1,0 +1,6 @@
+[submodule "todoist"]
+	path = todoist
+	url = https://github.com/Doist/todoist-python
+[submodule "tripit"]
+	path = tripit
+	url = https://github.com/tripit/python_binding_v1
