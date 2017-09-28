@@ -20,21 +20,113 @@ scripts use different versions of python.
 
 Let's get the scraper running first.
 
+First off, you need to signup for a tripit developer id by going to:
+
+    http://www.tripit.com/developer
+
+You'll need to sign into your tripit account. Select "full API application"
+from the list and the complete the registration form. Once your app is
+registered, you'll get an "API Key" and an "API Secret". We use those in the
+next step.
+
 Create a ~/.tripit json file, which should look like this:
 
+{
+    "apikey": "...thing from the last step...", 
+    "apisecret": "...other thing from the last step..."
+}
+
+Now when you run the tripit scraper, it will walk you through the OAUTH process
+to setup tokens to access tripit as the right user.
 
 
+$ python2 tripit_scraper.py 
+Please go to https://www.tripit.com/oauth/authorize?oauth_token=...magic goo...0&oauth_callback=http://www.stillhq.com/ and authorize your key.
 
+Open that URL in a browser and do the things it says (you might need to login
+to tripit). You'll eventually get redirected to my website. Now if you run the scraper again, it will build the cute little on disk cache:
 
-This script uses trip information from tripit to build todo items in todoist.
-The wart here of course is that the tripit API library is terrible, and I had
-to forward port it to python3 to get it to work.
+$ python2 tripit_scraper.py 
+Caching 204451638
+Caching 202641549
+Caching 202641499
+Caching 202641105
+Caching 202641052
+Caching 202639373
+Caching 202138486
 
-To install, do something like:
+Now we just need to turn those trips into todo items with todoist. This bit is
+much nicer, because the todoist people are adults. First off, we need to create
+an overly complicated todoist config file at ~/.todoist. Mine looks a bit like
+this:
 
-# cd todoist-python
-# pip3 install -e .
+{
+    "username": "mikal@stillhq.com",
+    "password": "...not telling...",
 
-I haven't figured out how to get python3 venvs working on Ubuntu 14.04,
-apparently Canonical shipped a broken implementation.
+    "alltrips": [
+        "Pack underwear (undies, socks)",
+        "Pack shirts",
+        "Pack pants (jeans, shorts)",
+        "Pack running gear",
+        "Pack rain gear",
+        "Pack cold gear",
+        "Pack toiletries",
+        "Pack tablets",
+        "Pack chargers",
+        "Check in"
+    ],
 
+    "shorttrip": [
+        "#include:alltrips"
+    ],
+
+    "longtrip": [
+        "#include:shorttrip",
+        "Pack spare tablets",
+        "Pack nice shirts"
+    ],
+
+    "internationaltrip": [
+        "#include:longtrip",
+        "Pack passport",
+        "Check visa",
+        "Pack in flight helpers (ear plugs, eye mask, sleeping tablets)",
+        "Charge headphones",
+        "Inform banks"
+    ]
+}
+
+You can see here that there are auth details for todoist, which should
+obviously match your account and not mine. The rest of this file is
+configuration for what todo items to create for a given trip type. Here I have
+stuff for all trips, a short trip type, a long trip type, and anything that
+involves leaving Australia.
+
+At the moment the rules for picking the trip type are hard coded into the
+todo creation script. I welcome contributions which implment a turing complete
+language in this config file.
+
+You of course need to install the todoist API, which you do like this:
+
+$ cd todoist
+$ sudo pip3 install -e .
+$ cd ..
+
+Now we can just run the todoist script to create todos:
+
+$ python3 triptodos.py
+Target project is 2160538923
+Considering Troop Council Camp
+Creating Troop Council Camp: Pack tent @ 10/11/2017
+...you get the idea...
+Considering Summer Camp
+... Trip too far away
+Considering OpenStack Summit
+... Trip too far away
+Considering AV2018 Camp
+... Trip too far away
+Considering Venturer Skills Hike
+... Trip too far away
+
+And that's all he wrote.

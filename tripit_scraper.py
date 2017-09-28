@@ -5,7 +5,7 @@ import json
 import os
 import sys
 
-from tripit import tripit
+import tripit
 
 
 with open(os.path.expanduser('~/.tripit')) as f:
