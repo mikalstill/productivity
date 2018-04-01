@@ -1,5 +1,5 @@
 [submodule "todoist"]
-	path = todoist
+	path = triptodos/todoist
 	url = https://github.com/Doist/todoist-python
 [submodule "tripit"]
 	path = _tripit/tripit
