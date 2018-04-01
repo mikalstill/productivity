@@ -1,15 +1,22 @@
 #!/usr/bin/python2.7
 
+# $1 is a job tag, which identifies the tripit user authentication details
+# in etcd.
+# $2 is the location of an etcd server, as a hostname / ip and port tuple
+
 import datetime
 import json
 import os
 import sys
 
+import etcd
 import tripit
 
 
-with open(os.path.expanduser('~/.tripit')) as f:
-    tripit_conf = json.loads(f.read())
+etcd_path = '/tripit/%s' % sys.argv[1]
+etcd_server = sys.argv[2].split(':')
+etcd_client = etcd.Client(host=etcd_server[0], port=int(etcd_server[1]))
+tripit_conf = json.loads(etcd_client.read('%s/auth' % etcd_path).value)
 
 # Log into tripit and create a key
 if not 'oauth_token' in tripit_conf:
@@ -21,8 +28,7 @@ if not 'oauth_token' in tripit_conf:
     tripit_oauth = tripit_api.get_request_token()
     tripit_conf.update(tripit_oauth)
 
-    with open(os.path.expanduser('~/.tripit'), 'w') as f:
-        f.write(json.dumps(tripit_conf, indent=4, sort_keys=True))
+    etcd_client.write('%s/auth' % etcd_path, json.dumps(tripit_conf, indent=4, sort_keys=True))
     
     print(('Please go to https://www.tripit.com/oauth/authorize?oauth_token=%s'
            '&oauth_callback=http://www.stillhq.com/ and authorize your key.'
@@ -41,8 +47,7 @@ elif not 'authorized' in tripit_conf:
     tripit_conf.update(tripit_oauth)
     tripit_conf['authorized'] = True
 
-    with open(os.path.expanduser('~/.tripit'), 'w') as f:
-        f.write(json.dumps(tripit_conf, indent=4, sort_keys=True))
+    etcd_client.write('%s/auth' % etcd_path, json.dumps(tripit_conf, indent=4, sort_keys=True))
 
 # Now get a list of trips
 tripit_creds = tripit.OAuthConsumerCredential(
@@ -63,20 +68,12 @@ for child in tripit_api.list_trip(
     except:
         pass
 
-# Stash details for all those trips
-if os.path.exists('.state'):
-    with open('.state') as f:
-        state = json.loads(f.read())
-else:
-    state = {}
+for trip_id in trip_ids:
+    try:
+        etcd_client.read('%s/trip/%s/data' %(etcd_path, trip_id))
 
-state.setdefault('handled', [])
-state.setdefault('cached', {})
-
-try:
-    for trip_id in trip_ids:
-        if trip_id in state['cached']:
-            continue
+    except etcd.EtcdKeyNotFound:
+        # We don't have this trip
 
         t = tripit_api.get_trip(trip_id).get_children()[0]
         d = {}
@@ -95,10 +92,7 @@ try:
 
         d['start_date'] = d['start_date'].isoformat()
         d['end_date'] = d['end_date'].isoformat()
-        
-        state['cached'][trip_id] = d
-        print 'Caching %s' % trip_id
 
-finally:
-    with open('.state', 'w') as f:
-        f.write(json.dumps(state, indent=4, sort_keys=True))
+        etcd_client.write('%s/trip/%s/data' %(etcd_path, trip_id),
+                          json.dumps(d, indent=4, sort_keys=True))
+        print('Discovered new trip, %s' % trip_id)

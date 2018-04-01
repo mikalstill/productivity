@@ -2,5 +2,5 @@
 	path = todoist
 	url = https://github.com/Doist/todoist-python
 [submodule "tripit"]
-	path = tripit
+	path = _tripit/tripit
 	url = https://github.com/tripit/python_binding_v1

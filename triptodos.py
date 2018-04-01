@@ -48,29 +48,40 @@ try:
             print('... Trip too far away')
             continue
 
-        def process_todos(tripname, todo_due_date, section):
+        def process_todos(tripname, before_trip_date, after_trip_date,
+                          section):
             for todo in todoist_conf[section]:
                 if todo.startswith('#include:'):
-                    process_todos(tripname, todo_due_date, todo.split(':')[1])
+                    process_todos(tripname, before_trip_date, after_trip_date,
+                                  todo.split(':')[1])
                     continue
 
+                elif todo.startswith('#after:'):
+                    todo_due = '%02d/%02d/%04d' %(after_trip_date.month,
+                                                  after_trip_date.day,
+                                                  after_trip_date.year)
+
+                else:
+                    todo_due = '%02d/%02d/%04d' %(before_trip_date.month,
+                                                  before_trip_date.day,
+                                                  before_trip_date.year)
+                    
                 todo_item = '%s: %s' %(tripname, todo)
-                todo_due = '%02d/%02d/%04d' %(todo_due_date.month,
-                                              todo_due_date.day,
-                                              todo_due_date.year)
                 print('Creating %s @ %s' %(todo_item, todo_due))
                 todoist_api.items.add(todo_item, project,
                                       date_string=todo_due)
                 todoist_api.commit()
 
-        todo_due_date = d['start_date']
-        todo_due_date -= datetime.timedelta(days=2)
+        before_trip_date = d['start_date']
+        before_trip_date -= datetime.timedelta(days=2)
+        after_trip_date = d['end_date']
+        after_trip_date += datetime.timedelta(days=1)
         duration = d['end_date'] - d['start_date']
         
         if not d['primary_location'].lower().endswith(', australia'):
             # International trip
-            process_todos(d['display_name'], todo_due_date,
-                          'internationaltrip')
+            process_todos(d['display_name'], before_trip_date,
+                          after_trip_date, 'internationaltrip')
             state['handled'].append(trip_id)
             continue
         
@@ -81,25 +92,35 @@ try:
             else:
                 typestring = 'camp'
 
-            process_todos(d['display_name'], todo_due_date, typestring)
+            process_todos(d['display_name'], before_trip_date,
+                          after_trip_date, typestring)
             state['handled'].append(trip_id)
             continue
         
         if d['display_name'].lower().endswith(' hike'):
             # Hiking
-            process_todos(d['display_name'], todo_due_date, 'hike')
+            process_todos(d['display_name'], before_trip_date,
+                          after_trip_date, 'hike')
             state['handled'].append(trip_id)
             continue
 
-        if duration.days < 3:
+        if duration.days < 1:
+            # Day trip
+            process_todos(d['display_name'], before_trip_date,
+                          after_trip_date, 'daytrip')
+            state['handled'].append(trip_id)
+            continue
+        
+        elif duration.days < 3:
             # Short domestic trip
-            process_todos(d['display_name'], todo_due_date,
-                          'shorttrip')
+            process_todos(d['display_name'], before_trip_date,
+                          after_trip_date, 'shorttrip')
             state['handled'].append(trip_id)
             continue
 
         # Long domestic trip
-        process_todos(d['display_name'], todo_due_date, 'longtrip')
+        process_todos(d['display_name'], before_trip_date,
+                      after_trip_date, 'longtrip')
         state['handled'].append(trip_id)
 
 finally:
