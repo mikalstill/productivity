@@ -56,7 +56,7 @@ for trip_path in etcd_client.get('%s/trip' % tripit_path).children:
                       section):
         for todo in todoist_conf[section]:
             if todo.startswith('#include:'):
-                process_todos(tripname, before_trip_date, after_trip_date,
+                process_todos(tripname, long_before_trip_date, before_trip_date, after_trip_date,
                               todo.split(':')[1])
                 continue
 
