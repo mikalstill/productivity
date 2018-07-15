@@ -48,17 +48,27 @@ for trip_path in etcd_client.get('%s/trip' % tripit_path).children:
     print('Considering %s' % d['display_name'])
     now = datetime.datetime.now()
     distance = d['start_date'] - now
-    if distance.days > 21:
+    if distance.days > 31:
         print('... Trip too far away')
         continue
 
-    def process_todos(tripname, before_trip_date, after_trip_date,
+    def process_todos(tripname, long_before_trip_date, before_trip_date, after_trip_date,
                       section):
         for todo in todoist_conf[section]:
             if todo.startswith('#include:'):
                 process_todos(tripname, before_trip_date, after_trip_date,
                               todo.split(':')[1])
                 continue
+
+            elif todo.startswith('#longbefore:'):
+                todo_due = '%02d/%02d/%04d' %(long_before_trip_date.month,
+                                              long_before_trip_date.day,
+                                              long_before_trip_date.year)
+
+            elif todo.startswith('#before:'):
+                todo_due = '%02d/%02d/%04d' %(before_trip_date.month,
+                                              before_trip_date.day,
+                                              before_trip_date.year)
 
             elif todo.startswith('#after:'):
                 todo_due = '%02d/%02d/%04d' %(after_trip_date.month,
@@ -76,6 +86,8 @@ for trip_path in etcd_client.get('%s/trip' % tripit_path).children:
                                   date_string=todo_due)
             todoist_api.commit()
 
+    long_before_trip_date = d['start_date']
+    long_before_trip_date -= datetime.timedelta(days=30)
     before_trip_date = d['start_date']
     before_trip_date -= datetime.timedelta(days=2)
     after_trip_date = d['end_date']
@@ -84,8 +96,11 @@ for trip_path in etcd_client.get('%s/trip' % tripit_path).children:
 
     if not d['primary_location'].lower().endswith(', australia'):
         # International trip
-        process_todos(d['display_name'], before_trip_date,
-                      after_trip_date, 'internationaltrip')
+        process_todos(d['display_name'],
+                      long_before_trip_date,
+                      before_trip_date,
+                      after_trip_date,
+                      'internationaltrip')
         etcd_client.write('%s/trip/%s/handled' %(tripit_path, trip_id), 1)
         continue
 
@@ -96,33 +111,58 @@ for trip_path in etcd_client.get('%s/trip' % tripit_path).children:
         else:
             typestring = 'camp'
 
-        process_todos(d['display_name'], before_trip_date,
-                      after_trip_date, typestring)
+        process_todos(d['display_name'],
+                      long_before_trip_date,
+                      before_trip_date,
+                      after_trip_date,
+                      typestring)
         etcd_client.write('%s/trip/%s/handled' %(tripit_path, trip_id), 1)
         continue
 
     if d['display_name'].lower().endswith(' hike'):
         # Hiking
-        process_todos(d['display_name'], before_trip_date,
-                      after_trip_date, 'hike')
+        process_todos(d['display_name'],
+                      long_before_trip_date,
+                      before_trip_date,
+                      after_trip_date,
+                      'hike')
+        etcd_client.write('%s/trip/%s/handled' %(tripit_path, trip_id), 1)
+        continue
+
+    if d['display_name'].lower().endswith(' hike course'):
+        # Hiking
+        process_todos(d['display_name'],
+                      long_before_trip_date,
+                      before_trip_date,
+                      after_trip_date,
+                      'hike course')
         etcd_client.write('%s/trip/%s/handled' %(tripit_path, trip_id), 1)
         continue
 
     if duration.days < 1:
         # Day trip
-        process_todos(d['display_name'], before_trip_date,
-                      after_trip_date, 'daytrip')
+        process_todos(d['display_name'],
+                      long_before_trip_date,
+                      before_trip_date,
+                      after_trip_date,
+                      'daytrip')
         etcd_client.write('%s/trip/%s/handled' %(tripit_path, trip_id), 1)
         continue
 
     elif duration.days < 3:
         # Short domestic trip
-        process_todos(d['display_name'], before_trip_date,
-                      after_trip_date, 'shorttrip')
+        process_todos(d['display_name'],
+                      long_before_trip_date,
+                      before_trip_date,
+                      after_trip_date,
+                      'shorttrip')
         etcd_client.write('%s/trip/%s/handled' %(tripit_path, trip_id), 1)
         continue
 
     # Long domestic trip
-    process_todos(d['display_name'], before_trip_date,
-                  after_trip_date, 'longtrip')
+    process_todos(d['display_name'],
+                  long_before_trip_date,
+                  before_trip_date,
+                  after_trip_date,
+                  'longtrip')
     etcd_client.write('%s/trip/%s/handled' %(tripit_path, trip_id), 1)
