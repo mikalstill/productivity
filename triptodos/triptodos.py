@@ -6,9 +6,15 @@ import dateutil.parser
 import json
 import os
 import sys
+import time
 
 import etcd
 import todoist
+
+
+def log(s):
+    print(s)
+    sys.stdout.flush()
 
 
 tripit_path = '/tripit/%s' % sys.argv[1]
@@ -29,13 +35,13 @@ for p in projects:
     if p['name'] == 'Travel':
         project = p['id']
 
-print('Target project is %s' % project)
+log('Target project is %s' % project)
 
 while True:
     for trip_path in etcd_client.get('%s/trip' % tripit_path).children:
         trip_id = trip_path.key.split('/')[-1]
         try:
-            print(trip_id)
+            log(trip_id)
             etcd_client.read('%s/trip/%s/handled' %(tripit_path, trip_id))
             continue
         except etcd.EtcdKeyNotFound:
@@ -46,11 +52,11 @@ while True:
         d['start_date'] = dateutil.parser.parse(d['start_date'])
         d['end_date'] = dateutil.parser.parse(d['end_date'])
 
-        print('Considering %s' % d['display_name'])
+        log('Considering %s' % d['display_name'])
         now = datetime.datetime.now()
         distance = d['start_date'] - now
         if distance.days > 31:
-            print('... Trip too far away')
+            log('... Trip too far away')
             continue
 
         def process_todos(tripname, long_before_trip_date, before_trip_date,
@@ -83,7 +89,7 @@ while True:
                                                   before_trip_date.year)
 
                 todo_item = '%s: %s' %(tripname, todo)
-                print('Creating %s @ %s' %(todo_item, todo_due))
+                log('Creating %s @ %s' %(todo_item, todo_due))
                 todoist_api.items.add(todo_item, project,
                                       date_string=todo_due)
                 todoist_api.commit()

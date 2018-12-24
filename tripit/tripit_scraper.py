@@ -19,6 +19,11 @@ etcd_client = None
 tripit_conf = None
 
 
+def log(s):
+    print s
+    sys.stdout.flush()
+
+
 def ensure_token(jog_tag, etcd_server):
     global etcd_path
     global etcd_client
@@ -27,6 +32,7 @@ def ensure_token(jog_tag, etcd_server):
     etcd_path = '/tripit/%s' % job_tag
     etcd_client = etcd.Client(host=etcd_server[0], port=int(etcd_server[1]))
     tripit_conf = json.loads(etcd_client.read('%s/auth' % etcd_path).value)
+    log('%s Loaded auth details from etcd' % datetime.datetime.now())
 
     # Log into tripit and create a key
     if not 'oauth_token' in tripit_conf:
@@ -41,11 +47,11 @@ def ensure_token(jog_tag, etcd_server):
         etcd_client.write('%s/auth' % etcd_path,
                           json.dumps(tripit_conf, indent=4, sort_keys=True))
 
-        print(('Please go to '
-               'https://www.tripit.com/oauth/authorize?oauth_token=%s'
-               '&oauth_callback=http://www.stillhq.com/ and authorize your '
-               'key.'
-               % tripit_oauth['oauth_token']))
+        log(('Please go to '
+             'https://www.tripit.com/oauth/authorize?oauth_token=%s'
+             '&oauth_callback=http://www.stillhq.com/ and authorize your '
+             'key.'
+             % tripit_oauth['oauth_token']))
         sys.exit(1)
 
     elif not 'authorized' in tripit_conf:
@@ -69,7 +75,7 @@ def fetch_trips():
     global tripit_conf
 
     # Now get a list of trips
-    print '%s Fetching trips' % datetime.datetime.now()
+    log('%s Fetching trips' % datetime.datetime.now())
     tripit_creds = tripit.OAuthConsumerCredential(
         str(tripit_conf['apikey']),
         str(tripit_conf['apisecret']),
@@ -87,7 +93,7 @@ def fetch_trips():
             trip_ids.append(child.__getattr__('id'))
         except:
             pass
-    print '%s Found active trip ids: %s' %(datetime.datetime.now(), trip_ids)
+    log('%s Found active trip ids: %s' %(datetime.datetime.now(), trip_ids))
 
     for trip_id in trip_ids:
         t = tripit_api.get_trip(trip_id).get_children()[0]
@@ -110,17 +116,21 @@ def fetch_trips():
 
         etcd_client.write('%s/trip/%s/data' %(etcd_path, trip_id),
                           json.dumps(d, indent=4, sort_keys=True))
-        print '%s Wrote trip %s to etcd' %(datetime.datetime.now(), trip_id)
+        log('%s Wrote trip %s to etcd' %(datetime.datetime.now(), trip_id))
 
 
 
 if __name__ == '__main__':
+    log('%s Started' % datetime.datetime.now())
     job_tag = sys.argv[1]
     etcd_server = sys.argv[2].split(':')
+    log('%s Scraping job %s storing to %s' %(datetime.datetime.now(),
+                                             job_tag, etcd_server))
 
     ensure_token(job_tag, etcd_server)
+    log('%s Logged into tripit' % datetime.datetime.now())
 
     while True:
         fetch_trips()
-        print '%s Sleeping for 15 minutes' % datetime.datetime.now()
+        log('%s Sleeping for 15 minutes' % datetime.datetime.now())
         time.sleep(15 * 60)

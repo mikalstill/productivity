@@ -18,18 +18,19 @@
   Methods to interact with the TripIt v1 API
 """
 
+from hashlib import md5
 import base64
 import datetime
 import hmac
-from hashlib import md5
+import json
 import random
 import re
+import sys
 import time
+import traceback
 import urllib
 import urllib2
-import traceback
 import xml.sax
-import json
 
 try:
     from cStringIO import StringIO
@@ -213,7 +214,9 @@ class ResponseHandler(xml.sax.handler.ContentHandler):
 
     def endElement(self, name):
         if self._current_content is not None:
-            if name.endswith('date'):
+            if name == 'is_cal_localtime':
+                pass
+            elif name.endswith('date'):
                 self._current_content = datetime.date(
                     *(time.strptime(
                         self._current_content, '%Y-%m-%d')[0:3]))
@@ -387,6 +390,7 @@ class TripIt(object):
                 entity = None
 
         response_data = self._do_request(verb, entity, params, post_args)
+        sys.stderr.write('Got XML:\n%s\n\n' % response_data)
         return _xml_to_py(response_data)
 
     def get_trip(self, id, filter=None):
